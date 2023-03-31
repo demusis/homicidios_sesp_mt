@@ -2,9 +2,11 @@ library(dplyr)
 library(factoextra)
 library(forecast)
 library(imputeTS)
+library(lubridate)
 library(xts)
 library(readr)
 library(writexl)
+library(zoo)
 
 setwd("~/INMET")
 
@@ -47,18 +49,23 @@ INMET_xts <- na_kalman(INMET_xts,
 # Agregando as colunas em médias mensais
 INMET_mensal_xts <- apply.monthly(INMET_xts, FUN = mean)
 
-# ---------------------------------------------
+# Carregar dados de homicídios em Cuiabá + VG 
+homicidios <- read_excel("Homicidios dolosos (CBA e VG) 2012-2022.xlsx")
+colnames(homicidios) <- c("mes", "ano", 'homicidios')
 
-homicidios <- read_delim("HOMICÍDIOS 2012-2022.CSV", 
-                         delim = ";", 
-                         escape_double = FALSE, 
-                         trim_ws = TRUE)
-homicidios$Data <- as.Date(homicidios$Data, 
-                           format = "%d/%m/%Y")
-homicidios_xts <- xts(homicidios$Homicidio, 
-                      order.by = homicidios$Data)
-homicidios_mensal_xts <- apply.monthly(homicidios_xts, 
-                                       FUN = sum)
+meses <- c("JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
+homicidios$mes <- match(homicidios$mes, meses)
+
+# Combinar as colunas de ano e mês para criar uma coluna de datas
+homicidios$data <- as.Date(paste(homicidios$ano, 
+                                 homicidios$mes, 
+                                 1, 
+                                 sep = "-"))
+
+# Converter o dataframe em um objeto xts
+homicidios_mensal_xts <- as.xts(homicidios$homicidios, 
+                                order.by = as.Date(homicidios$data))
+
 
 # ---------------------------------------------
 
@@ -149,7 +156,7 @@ ajuste <- function(aux = NA) {
 # Obter todas as combinações possíveis das colunas
 num_colunas <- ncol(INMET_mensal_xts)
 
-resultados <- ajuste()
+
 # Loop para iterar todas as combinações possíveis de um a n
 for (i in 1:num_colunas) {
   combinacoes <- combn(1:num_colunas, i)
@@ -199,7 +206,7 @@ autoplot(predicoes)
 # Plote o gráfico com a série original e estimativas
 
 homicidios_estimados <- xts(homicidios_final$fitted, 
-                            order.by = homicidios$Data)
+                            order.by = homicidios$data)
 
 homicidios_est_obs <- cbind(homicidios_mensal_xts, homicidios_estimados)
 plot(homicidios_mensal_xts, 
