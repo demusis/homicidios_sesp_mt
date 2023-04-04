@@ -5,6 +5,7 @@ library(imputeTS)
 library(lubridate)
 library(xts)
 library(readr)
+library(readxl)
 library(writexl)
 library(zoo)
 
@@ -73,12 +74,12 @@ resultados <- data.frame(covariaveis = character(),
                          aic = numeric(), 
                          aicc = numeric(), 
                          bic = numeric(), 
-                         me = numeric(), 
+                         mase = numeric(), 
                          stringsAsFactors = FALSE)
 
-# Dividir os dados em conjuntos de treinamento (90%) e teste (10%)
+# Dividir os dados em conjuntos de treinamento (70%) e teste (30%)
 nh <- nrow(homicidios_mensal_xts)
-n_treino <- floor(0.9 * nh)
+n_treino <- floor(0.7 * nh)
 homicidios_mensal_xts_treino <- homicidios_mensal_xts[1:n_treino]
 homicidios_mensal_xts_teste <- homicidios_mensal_xts[(n_treino + 1):nh]
 
@@ -141,14 +142,17 @@ ajuste <- function(aux = NA) {
   df2[1, 4] <- res$bic
   
   # Previsão do conjunto de teste
-  prev_teste <- forecast(res2, 
-                         xreg = INMET_teste, 
-                         h = nrow(homicidios_mensal_xts_teste))
+  if (any(is.na(aux))) {
+    prev_teste <- forecast(res2, 
+                           h = nrow(homicidios_mensal_xts_teste))
+  } else {
+    prev_teste <- forecast(res2, 
+                           xreg = INMET_teste, 
+                           h = nrow(homicidios_mensal_xts_teste))
+  }
   
-  # Calcular a acurácia da previsão
-  # ME: Mean Error
-  df2[1, 5] <- accuracy(prev_teste, homicidios_mensal_xts_teste)[2]
-  
+  # Calcular o MASE
+  df2[1, 5] <- accuracy(prev_teste, homicidios_mensal_xts_teste)[2,6]
   
   return(df2)
 }
@@ -156,7 +160,7 @@ ajuste <- function(aux = NA) {
 # Obter todas as combinações possíveis das colunas
 num_colunas <- ncol(INMET_mensal_xts)
 
-
+resultados <- ajuste(aux=NA)
 # Loop para iterar todas as combinações possíveis de um a n
 for (i in 1:num_colunas) {
   combinacoes <- combn(1:num_colunas, i)
