@@ -84,7 +84,7 @@ homicidios_mensal_xts_treino <- homicidios_mensal_xts[1:n_treino]
 homicidios_mensal_xts_teste <- homicidios_mensal_xts[(n_treino + 1):nh]
 
 ajuste <- function(aux = NA) {
-  # Dividir os dados em conjuntos de treinamento (90%) e teste (10%)
+  # Dividir os dados em conjuntos de treinamento (70%) e teste (30%)
   INMET_treino <- as.matrix(INMET_mensal_xts[, aux])[1:n_treino,]
   INMET_teste <- as.matrix(INMET_mensal_xts[, aux])[(n_treino=1):nh,]
   
